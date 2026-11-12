@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+ html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:sans-serif}
+ #game{width:100vw;height:100vh}
+ #log{position:fixed;left:8px;top:8px;right:8px;max-height:45%;overflow:auto;color:#0f0;font:16px monospace;white-space:pre-wrap;pointer-events:none;text-shadow:0 0 3px #000}
+</style></head>
+<body>
+<div id="game"></div><div id="log"></div>
+<script>
+ var logEl=document.getElementById('log');
+ function log(m){logEl.textContent+=m+"\n"; logEl.scrollTop=logEl.scrollHeight;}
+ window.onerror=function(m,s,l){log('ERR '+m+' @'+(s||'').split('/').pop()+':'+l)};
+ log('Boot. WASM: '+(typeof WebAssembly)+', fetch: '+(typeof fetch)+', modules: '+('noModule' in HTMLScriptElement.prototype));
+ // Press Menu/Start (button 9) on the pad to hide/show this log
+ setInterval(function(){var g=(navigator.getGamepads&&navigator.getGamepads())||[];
+  for(var i=0;i<g.length;i++){if(g[i]&&g[i].buttons[9]&&g[i].buttons[9].pressed&&!window._p){window._p=1;logEl.style.display=logEl.style.display=='none'?'block':'none'}else if(g[i]&&g[i].buttons[9]&&!g[i].buttons[9].pressed)window._p=0}},100);
+ window.RufflePlayer=window.RufflePlayer||{};
+ window.RufflePlayer.config={publicPath:'ruffle/',autoplay:'on',unmuteOverlay:'hidden',splashScreen:false,
+   warnOnUnsupportedContent:false,logLevel:'warn',contextMenu:'off',letterbox:'on',openUrlMode:'deny',
+   base:'game/'};
+</script>
+<script src="ruffle/ruffle.js" onerror="log('Could not load ruffle/ruffle.js')"></script>
+<script>
+ window.addEventListener('load',function(){
+  if(!window.RufflePlayer||!RufflePlayer.newest){log('Ruffle did not load (engine may lack required web features).');return}
+  var r=RufflePlayer.newest(), p=r.createPlayer();
+  p.style.width='100%';p.style.height='100%';
+  document.getElementById('game').appendChild(p);
+  p.addEventListener('loadedmetadata',function(){log('SWF loaded OK')});
+  p.load({url:'game/FPA.swf'}).then(function(){log('load() resolved')}).catch(function(e){log('load() failed: '+e)});
+ });
+</script>
+</body></html>
