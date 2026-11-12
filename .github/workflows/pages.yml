@@ -1,0 +1,51 @@
+name: Deploy web version (GitHub Pages)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p site/game site/ruffle
+          cp web/index.html site/index.html
+
+          # Game files from the "game-assets" release
+          gh release download game-assets --pattern "sfpa-ce.zip" --dir "$RUNNER_TEMP"
+          unzip -q "$RUNNER_TEMP/sfpa-ce.zip" -d "$RUNNER_TEMP/game"
+          cp "$RUNNER_TEMP/game/FPA.swf" "$RUNNER_TEMP/game/gamepad.swf" site/game/
+          cp -r "$RUNNER_TEMP/game/Levels" site/game/Levels
+          find site/game -name "*.fla" -delete
+          find site/game -name "*.bak" -delete
+
+          # Latest Ruffle self-hosted web build
+          url=$(gh api "repos/ruffle-rs/ruffle/releases?per_page=5" \
+            --jq '[.[].assets[] | select(.name | endswith("web-selfhosted.zip"))][0].browser_download_url')
+          echo "Ruffle: $url"
+          curl -sL "$url" -o "$RUNNER_TEMP/ruffle.zip"
+          unzip -q "$RUNNER_TEMP/ruffle.zip" -d site/ruffle
+          du -sh site; ls site/ruffle | head
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
