@@ -53,8 +53,17 @@ jobs:
       - name: Restore + build
         shell: pwsh
         run: |
+          $uap = "${env:ProgramFiles(x86)}\Windows Kits\10\Platforms\UAP"
+          if (-not (Test-Path $uap)) {
+            Write-Host "No UAP SDK folder. Installed platforms:"
+            Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\Platforms" -ErrorAction SilentlyContinue
+            throw "UWP SDK missing on this runner"
+          }
+          $sdk = Get-ChildItem $uap | Sort-Object { [version]$_.Name } | Select-Object -Last 1
+          Write-Host "Using UAP SDK $($sdk.Name)"
           nuget restore XboxFlash\XboxFlash.csproj -PackagesDirectory packages
           msbuild XboxFlash\XboxFlash.csproj /restore /p:Configuration=Release /p:Platform=x64 `
+            /p:TargetPlatformVersion=$($sdk.Name) `
             /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\out\" `
             /p:PackageCertificateKeyFile="$env:GITHUB_WORKSPACE\XboxFlash\XboxFlash_TemporaryKey.pfx" `
@@ -73,4 +82,3 @@ jobs:
         with:
           name: xbox-package
           path: dist/*
-          
