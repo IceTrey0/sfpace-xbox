@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fancy Custom Level Collection</title>
+<style>
+ html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:sans-serif;color:#fff}
+ #game{width:100vw;height:100vh}
+ #log{position:fixed;left:8px;top:8px;right:8px;max-height:70%;overflow:auto;color:#0f0;font:13px monospace;white-space:pre-wrap;pointer-events:none;text-shadow:0 0 3px #000}
+ #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#000;z-index:5;cursor:pointer;text-align:center}
+ #start h1{font-size:40px;margin:0 0 12px} #start p{font-size:22px;opacity:.8}
+</style></head>
+<body>
+<div id="start"><h1>Fancy Custom Level Collection</h1><p>Press A / click / tap to start</p></div>
+<div id="game"></div><div id="log"></div>
+<script>
+// ===== Controller -> keyboard mapping (EDIT THESE to match the game's keys) =====
+var PAD_KEYS = {
+  up:    {key:'ArrowUp',    code:'ArrowUp',    keyCode:38},
+  down:  {key:'ArrowDown',  code:'ArrowDown',  keyCode:40},
+  left:  {key:'ArrowLeft',  code:'ArrowLeft',  keyCode:37},
+  right: {key:'ArrowRight', code:'ArrowRight', keyCode:39},
+  a:     {key:'s',          code:'KeyS',       keyCode:83},   // Xbox A
+  b:     {key:'a',          code:'KeyA',       keyCode:65},   // Xbox B
+  x:     {key:'d',          code:'KeyD',       keyCode:68},   // Xbox X
+  y:     {key:'w',          code:'KeyW',       keyCode:87},   // Xbox Y
+  start: {key:'Enter',      code:'Enter',      keyCode:13},   // Menu
+  back:  {key:'Escape',     code:'Escape',     keyCode:27}    // View
+};
+// =================================================================================
+var logEl=document.getElementById('log');
+function log(m){logEl.textContent+=m+"\n";logEl.scrollTop=logEl.scrollHeight}
+['warn','error','info'].forEach(function(l){var o=console[l];console[l]=function(){try{log('['+l+'] '+Array.prototype.slice.call(arguments).map(function(a){return typeof a==='string'?a:(a&&a.message)||JSON.stringify(a)}).join(' ').slice(0,300))}catch(e){}if(o)o.apply(console,arguments)}});
+window.onerror=function(m,s,l){log('ERR '+m+' @'+(s||'').split('/').pop()+':'+l)};
+window.addEventListener('unhandledrejection',function(e){log('REJECT '+(e.reason&&e.reason.message||e.reason))});
+
+window.RufflePlayer=window.RufflePlayer||{};
+window.RufflePlayer.config={publicPath:'ruffle/',autoplay:'on',unmuteOverlay:'hidden',splashScreen:false,
+  warnOnUnsupportedContent:false,logLevel:'info',contextMenu:'off',letterbox:'on',openUrlMode:'deny'};
+
+var player=null,started=false;
+function begin(){
+  if(started)return; started=true;
+  document.getElementById('start').style.display='none';
+  if(!window.RufflePlayer||!RufflePlayer.newest){log('Ruffle failed to load');return}
+  var r=RufflePlayer.newest();player=r.createPlayer();
+  player.style.width='100%';player.style.height='100%';
+  document.getElementById('game').appendChild(player);
+  player.addEventListener('loadedmetadata',function(){log('SWF loaded OK');});
+  player.load({url:'game/FPA.swf'}).catch(function(e){log('load() failed: '+e)});
+  try{player.focus()}catch(e){}
+  if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});
+}
+document.getElementById('start').addEventListener('click',begin);
+document.addEventListener('keydown',begin);
+
+// ---- gamepad polling ----
+var held={};
+function send(type,k){
+  var ev=new KeyboardEvent(type,{key:k.key,code:k.code,bubbles:true,cancelable:true});
+  try{Object.defineProperty(ev,'keyCode',{get:function(){return k.keyCode}});Object.defineProperty(ev,'which',{get:function(){return k.keyCode}})}catch(e){}
+  (player||document).dispatchEvent(ev);
+}
+function setState(name,down){
+  if(!!held[name]===down)return; held[name]=down;
+  if(PAD_KEYS[name])send(down?'keydown':'keyup',PAD_KEYS[name]);
+}
+var lastToggle=false;
+function poll(){
+  var pads=(navigator.getGamepads&&navigator.getGamepads())||[];
+  for(var i=0;i<pads.length;i++){var g=pads[i];if(!g)continue;var b=g.buttons,ax=g.axes;
+    function P(n){return b[n]&&b[n].pressed}
+    if(P(0)&&!started)begin();
+    setState('a',P(0));setState('b',P(1));setState('x',P(2));setState('y',P(3));
+    setState('back',P(8));setState('start',P(9));
+    setState('up',P(12)||ax[1]<-0.5);setState('down',P(13)||ax[1]>0.5);
+    setState('left',P(14)||ax[0]<-0.5);setState('right',P(15)||ax[0]>0.5);
+    // Hold LB+RB to show/hide the debug log
+    var t=P(4)&&P(5); if(t&&!lastToggle)logEl.style.display=logEl.style.display=='none'?'block':'none'; lastToggle=t;
+    break;
+  }
+  requestAnimationFrame(poll);
+}
+requestAnimationFrame(poll);
+log('Ready. WASM: '+(typeof WebAssembly)+'  Gamepad API: '+(!!navigator.getGamepads));
+</script>
+<script src="ruffle/ruffle.js" onerror="log('Could not load ruffle/ruffle.js')"></script>
+</body></html>
