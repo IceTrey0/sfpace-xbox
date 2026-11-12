@@ -1,0 +1,8 @@
+<Page x:Class="XboxFlash.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="Black">
+    <Grid>
+        <WebView x:Name="Web" DefaultBackgroundColor="Black" />
+    </Grid>
+</Page>
