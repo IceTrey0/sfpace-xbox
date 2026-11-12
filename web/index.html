@@ -34,7 +34,7 @@ window.onerror=function(m,s,l){log('ERR '+m+' @'+(s||'').split('/').pop()+':'+l)
 window.addEventListener('unhandledrejection',function(e){log('REJECT '+(e.reason&&e.reason.message||e.reason))});
 
 window.RufflePlayer=window.RufflePlayer||{};
-window.RufflePlayer.config={publicPath:'ruffle/',autoplay:'on',unmuteOverlay:'hidden',splashScreen:false,
+window.RufflePlayer.config={publicPath:'ruffle/',autoplay:'on',unmuteOverlay:'hidden',splashScreen:true,
   warnOnUnsupportedContent:false,logLevel:'info',contextMenu:'off',letterbox:'on',openUrlMode:'deny'};
 
 var player=null,started=false;
