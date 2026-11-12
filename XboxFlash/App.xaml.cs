@@ -1,3 +1,4 @@
+using System;
 using Windows.ApplicationModel.Activation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -6,14 +7,15 @@ namespace XboxFlash
 {
     sealed partial class App : Application
     {
-        public App() { this.InitializeComponent(); }
+        public App()
+        {
+            this.InitializeComponent();
+            this.UnhandledException += (s, e) => { e.Handled = true; };
+        }
 
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
-            // Turn off the Xbox "mouse mode" cursor so the gamepad goes straight to the page
-            this.RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested;
-            Windows.UI.ViewManagement.ApplicationView.GetForCurrentView()
-                .SetDesiredBoundsMode(Windows.UI.ViewManagement.ApplicationViewBoundsMode.UseCoreWindow);
+            try { this.RequiresPointerMode = ApplicationRequiresPointerMode.WhenRequested; } catch { }
             var frame = Window.Current.Content as Frame;
             if (frame == null)
             {

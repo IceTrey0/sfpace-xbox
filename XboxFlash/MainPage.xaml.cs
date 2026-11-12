@@ -1,6 +1,5 @@
 using System;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Navigation;
 
 namespace XboxFlash
 {
@@ -9,25 +8,28 @@ namespace XboxFlash
         public MainPage()
         {
             this.InitializeComponent();
-            Web.Loaded += (s, e) =>
+            this.Loaded += async (s, e) =>
             {
-                Web.Focus(Windows.UI.Xaml.FocusState.Programmatic);
-                // Serve app files at ms-local-stream:// so fetch()/WASM works (ms-appx-web blocks it)
-                Web.NavigateToLocalStreamUri(
-                    new Uri("ms-local-stream://" + Windows.ApplicationModel.Package.Current.Id.Name + "_www/index.html"),
-                    new StreamResolver());
+                try
+                {
+                    Web.Focus(Windows.UI.Xaml.FocusState.Programmatic);
+                    Web.NavigationFailed += async (ws, we) => await Show("Navigation failed: " + we.WebErrorStatus);
+                    Web.NavigateToLocalStreamUri(new Uri("ms-local-stream://xboxflash_www/index.html"), new StreamResolver());
+                }
+                catch (Exception ex)
+                {
+                    await Show("Startup error: " + ex.GetType().Name + "\n" + ex.Message);
+                }
             };
-            Web.NavigationFailed += (s, e) => ShowErr("Navigation failed: " + e.WebErrorStatus);
         }
 
-        private async void ShowErr(string msg)
+        private async System.Threading.Tasks.Task Show(string msg)
         {
-            var d = new Windows.UI.Popups.MessageDialog(msg, "XboxFlash");
-            await d.ShowAsync();
+            try { await new Windows.UI.Popups.MessageDialog(msg, "XboxFlash").ShowAsync(); } catch { }
         }
     }
 
-    // Maps ms-local-stream://<pkg>_www/<path> to <install folder>\www\<path>
+    // Maps ms-local-stream://xboxflash_www/<path> to <install folder>\www\<path>
     public sealed class StreamResolver : Windows.Web.IUriToStreamResolver
     {
         public Windows.Foundation.IAsyncOperation<Windows.Storage.Streams.IInputStream> UriToStreamAsync(Uri uri)
@@ -39,9 +41,9 @@ namespace XboxFlash
         {
             try
             {
-                var path = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/').Replace('/', '\\');
-                var root = await Windows.ApplicationModel.Package.Current.InstalledLocation.GetFolderAsync("www");
-                var file = await root.GetFileAsync(path);
+                var rel = Uri.UnescapeDataString(uri.AbsolutePath).TrimStart('/');
+                var folder = await Windows.ApplicationModel.Package.Current.InstalledLocation.GetFolderAsync("www");
+                var file = await folder.GetFileAsync(rel.Replace('/', '\\'));
                 var stream = await file.OpenReadAsync();
                 return stream.GetInputStreamAt(0);
             }
